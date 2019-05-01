@@ -21,8 +21,19 @@ using Dates
 
 greet() = print("Hello World!")
 
-include("system.jl")
-using .System
+# disable caret and scikitlearn
+#include("system.jl")
+#using .System
+#if LIB_SKL_AVAILABLE # from System module
+#    include("scikitlearn.jl")
+#    using .SKLearners
+#    #export skkrun
+#end
+#if LIB_CRT_AVAILABLE # from System module
+#    include("caret.jl")
+#    using .CaretLearners
+#    #export caretrun
+#end
 
 include("types.jl")
 using .TSMLTypes
@@ -43,18 +54,6 @@ using .TSMLTransformers
 include("baseline.jl")
 using .BaselineAlgos
 #export baselinerun
-
-if LIB_SKL_AVAILABLE # from System module
-    include("scikitlearn.jl")
-    using .SKLearners
-    #export skkrun
-end
-
-if LIB_CRT_AVAILABLE # from System module
-    include("caret.jl")
-    using .CaretLearners
-    #export caretrun
-end
 
 include("multilearner.jl")
 using .MultiLearners
