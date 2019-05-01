@@ -22,8 +22,8 @@ using Dates
 greet() = print("Hello World!")
 
 # disable caret and scikitlearn
-#include("system.jl")
-#using .System
+include("system.jl")
+using .System
 #if LIB_SKL_AVAILABLE # from System module
 #    include("scikitlearn.jl")
 #    using .SKLearners
@@ -55,8 +55,8 @@ include("baseline.jl")
 using .BaselineAlgos
 #export baselinerun
 
-include("multilearner.jl")
-using .MultiLearners
+#include("multilearner.jl")
+#using .MultiLearners
 
 include("decisiontree.jl")
 using .DecisionTreeLearners
