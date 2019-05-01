@@ -8,7 +8,7 @@ module TSML
 #    __precompile__(false) # assume default has binary libs
 #end
 
-__precompile__(false) # assume default has binary libs
+__precompile__(true) # no binary libs
 
 export greet
 export testall
