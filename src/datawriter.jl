@@ -1,12 +1,12 @@
 module DataWriters
 using FileIO
 using CSVFiles
-using FeatherFiles
+#using FeatherFiles
 using DataFrames
-using HDF5
-using JLD
-using Feather
-using Parquet
+#using HDF5
+#using JLD
+#using Feather
+#using Parquet
 using Dates
 
 export DataWriter, fit!, transform!
