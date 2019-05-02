@@ -1,12 +1,12 @@
 module DataReaders
 using FileIO
 using CSVFiles
-using FeatherFiles
-using Feather
+#using FeatherFiles
+#using Feather
 using DataFrames
-using HDF5
-using JLD
-using Parquet
+#using HDF5
+#using JLD
+#using Parquet
 using Dates
 
 export DataReader, fit!, transform!
@@ -19,9 +19,10 @@ import TSML.TSMLTypes.fit! # to overload
 import TSML.TSMLTypes.transform! # to overload
 using TSML.Utils
 
-const FILEFMT = Dict("csv"=>Val(:csv),"feather"=>Val(:feather),"hdf5"=>Val(:hdf5),
-          "h5"=>Val(:hdf5),"parquet"=>Val(:parquet),"jld"=>Val(:jld))
+#const FILEFMT = Dict("csv"=>Val(:csv),"feather"=>Val(:feather),"hdf5"=>Val(:hdf5),
+#          "h5"=>Val(:hdf5),"parquet"=>Val(:parquet),"jld"=>Val(:jld))
 
+const FILEFMT = Dict("csv"=>Val(:csv))
 const DATEFMT = "d/m/yyyy HH:MM"
 
 mutable struct DataReader <: Transformer
