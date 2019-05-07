@@ -19,7 +19,7 @@ function runme(args)
   elseif length(args) == 4
     res=tsmlrun(args[1],args[2],args[3],args[4])
   end
-  @show res
+  res
 end
 
 runme(ARGS)
