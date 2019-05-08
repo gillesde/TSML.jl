@@ -22,13 +22,15 @@ const COMMONARG = Dict(:dateformat=>"dd/mm/yyyy HH:MM",
                        )
 
 function tsmlrun(inputname::AbstractString,outputname::AbstractString="",datefmt::AbstractString="dd/mm/yyyy HH:MM",otype::AbstractString="table")
+    res = DataFrame()
     if otype == "table"
-        imputedoutput(inputname,outputname,datefmt)
+        res=imputedoutput(inputname,outputname,datefmt)
     elseif otype == "stat"
-        imputedstat(inputname,outputname,datefmt)
+        res=imputedstat(inputname,outputname,datefmt)
     else
         error("wrong output type")
     end
+    res
 end
 
 function rawstat(inputname::AbstractString,outputname::AbstractString="",datefmt::AbstractString="dd/mm/yyyy HH:MM")
