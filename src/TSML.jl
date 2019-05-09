@@ -81,5 +81,7 @@ include("cliwrapper.jl")
 using .CLIWrappers
 #export tsmlrun
 
+include("tsclassifier.jl")
+using .TSClassifiers
 
 end # module
