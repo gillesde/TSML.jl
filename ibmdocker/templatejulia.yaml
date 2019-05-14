@@ -1,0 +1,31 @@
+%YAML 1.2
+---
+# This template defines the schedule for a hello world docker that illustrates how a worker docker can be build. 
+# 
+# The scheduler runs on a single vertex ID in the graph and creates a job for it every minute.
+#
+# The nim code that is run in the docker is defined in `run_docker.nim`. 
+# It defines a simple function `hello_world(job: Job)` that takes a job and prints its definition as YAML to the command line.
+#
+guid: HelloWorld
+
+queries:
+  - queries:
+    - query: Sensor(s)
+
+schedules:
+  - priority: 2
+    period: 10000 # 1min
+    expires: 100000
+    mode: instances
+    worker:
+      type: kubernetes
+      config:
+        WORKER_DEBUG: true
+        WORKER_EXEC: "/run.jl s.csv s.csv"
+        WORKER_DOWNLOAD: [s]
+        WORKER_UPLOAD: [s]
+        WORKER_ENV:
+          testEnv: test
+        DOCKER_REGISTRY: res-ai4dt-docker-local.artifactory.swg-devops.com
+        DOCKER_IMAGE: tsmlworker

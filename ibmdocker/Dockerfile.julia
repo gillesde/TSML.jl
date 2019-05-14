@@ -1,0 +1,13 @@
+# this is a build docker that prebuilds all dependencies
+FROM res-ai4dt-docker-local.artifactory.swg-devops.com/kitt_rust_build:latest as build
+
+# our final base
+FROM gcr.io/distroless/cc
+
+FROM res-ai4dt-docker-local.artifactory.swg-devops.com/tsml:latest
+
+# copy the build artifact from the build stage
+COPY --from=build /target/release/kitt_tools /kitt
+
+# set the startup command to run your binary
+CMD ["./kitt", "-e", "queue", "worker"]
