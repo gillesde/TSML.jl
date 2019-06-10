@@ -4,10 +4,21 @@ Author = "Paulito P. Palmes"
 
 # Statistical Metrics
 
-Let us again start generating an artificial data with missing values which we 
-will use in our demo tutorial.
+Each TS can be evaluated to extract its statistical features which can be used for
+data quality assessment, data discovery by clustering and classification, and anomaly
+characterization among others.
 
-```@example stat
+TSML relies on `Statifier` to perform statistical metrics on the TS which can be
+configured to extract the statistics of missing blocks aside from the non-missing elements.
+Some of the scalar statistics it uses include: pacf, acf, autocor, quartiles, mean, median,
+max, min, kurtosis, skewness, variation, standard error, entropy, etc. It has only
+one argument `:processmissing => true` which indicates whether to include the statistics of
+missing data.
+
+Let us again start generating an artificial data with missing values 
+using the `generateDataWithMissing()` described in the beginning of tutorial.
+
+```@setup stat
 using Random, Dates, DataFrames
 function generateDataWithMissing()
    Random.seed!(123)
@@ -19,15 +30,16 @@ function generateDataWithMissing()
    df[:Value][gndxmissing] .= missing
    return df
 end
-
-X = generateDataWithMissing()
-first(X,20)
+```
+```@repl stat
+X = generateDataWithMissing();
+first(X,15)
 ```
 
-## Statifier
+## Statifier for Both Non-Missing and Missing Values
 
 TSML includes `Statifier` transformer that computes scalar statistics to
-characterize the time-series data. By default, it also computes statistics of 
+characterize the time series data. By default, it also computes statistics of 
 missing blocks of data. To disable this feature, one can pass 
 `:processmissing => false` to the argument during its instance creation. Below
 illustrates this workflow.
@@ -45,7 +57,7 @@ using TSML: Statifier
 dtvalgator = DateValgator(Dict(:dateinterval => Dates.Hour(1)))
 dtvalnner = DateValNNer(Dict(:dateinterval => Dates.Hour(1)))
 dtvalizer = DateValizer(Dict(:dateinterval => Dates.Hour(1)))
-stfier = Statifier()
+stfier = Statifier(Dict(:processmissing => true))
 
 mypipeline = Pipeline(
   Dict( :transformers => [
@@ -57,10 +69,17 @@ mypipeline = Pipeline(
 
 fit!(mypipeline,X)
 results = transform!(mypipeline,X)
+nothing #hide
 ```
 
-If you are not intested with the statistics of the missing blocks, you can indicate
-`:processmissing => false` in the instance argument.
+```@repl stat
+show(results,allcols=true)
+```
+
+## Statifier for Non-Missing Values only
+
+If you are not intested with the statistics of the missing blocks, you can disable missing
+blocks stat summary by indicating `:processmissing => false` in the instance argument:
 
 ```@example stat
 stfier = Statifier(Dict(:processmissing=>false))
@@ -73,9 +92,17 @@ mypipeline = Pipeline(
 )
 fit!(mypipeline,X)
 results = transform!(mypipeline,X)
+nothing #hide
 ```
 
-Let us check the statistics after the imputation. We expect that if the imputation is successful,
+```@repl stat
+show(results,allcols=true)
+```
+
+## Statifier After Imputation
+
+Let us check the statistics after the imputation by adding `DateValNNer` instance in the
+pipeline. We expect that if the imputation is successful,
 the stats for missing blocks will all be NaN because stats of empty set is an NaN.
 
 ```@example stat
@@ -90,10 +117,15 @@ mypipeline = Pipeline(
 )
 fit!(mypipeline,X)
 results = transform!(mypipeline,X)
+nothing #hide
+```
+
+```@repl stat
+show(results,allcols=true)
 ```
 
 As we expected, the imputation is successful and there are no more missing values in the
-processed time-series dataset.
+processed time series dataset.
 
 Let's try with the other imputation using `DateValizer` and validate that there are no more
 missing values based on the stats.
@@ -110,6 +142,11 @@ mypipeline = Pipeline(
 )
 fit!(mypipeline,X)
 results = transform!(mypipeline,X)
+nothing #hide
 ```
 
-Indeed, the imputation is a success.
+```@repl stat
+show(results,allcols=true)
+```
+
+Indeed, the imputation got rid of the missing values.

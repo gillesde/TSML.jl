@@ -1,6 +1,13 @@
 # Convert a 1-D timeseries into sliding window matrix for ML training
 # using Plots
 
+const gAggDict = Dict(
+    :median => Statistics.median,
+    :mean =>   Statistics.mean,
+    :maximum => Statistics.maximum,
+    :minimum => Statistics.minimum
+)
+
 mutable struct Matrifier <: Transformer
   model
   args
@@ -26,8 +33,10 @@ function transform!(mtr::Matrifier,xx::T) where {T<:Union{Matrix,Vector,DataFram
   typeof(xx) <: DataFrame || error("input is not a dataframe")
   x = deepcopy(xx[:Value])
   x isa Vector || error("data should be a vector")
+  mtype = eltype(x)
   res=toMatrix(mtr,x)
-  convert(Array{Float64},res)
+  resarray=convert(Array{mtype},res) |> DataFrame
+  rename!(resarray,names(resarray)[end] => :output)
 end
 
 function toMatrix(mtr::Transformer, x::Vector)
@@ -93,7 +102,8 @@ function transform!(dtr::Dateifier,xx::T) where {T<:Union{Matrix,Vector,DataFram
   dt[:doq]=Dates.dayofquarter.(endpoints)
   dt[:qoy]=Dates.quarterofyear.(endpoints)
   dtr.args[:header] = names(dt)
-  convert(Matrix{Int64},dt)
+  #convert(Matrix{Int64},dt)
+  return dt
 end
 
 
@@ -103,10 +113,10 @@ end
 mutable struct DateValgator <: Transformer
   model
   args
-
   function DateValgator(args=Dict())
     default_args = Dict{Symbol,Any}(
-        :dateinterval => Dates.Hour(1)
+        :dateinterval => Dates.Hour(1),
+        :aggregator => :median
     )
     new(nothing,mergedict(default_args,args))
   end
@@ -124,16 +134,25 @@ end
 function fit!(dvmr::DateValgator,xx::T,y::Vector=[]) where {T<:Union{Matrix,DataFrame}}
   x = deepcopy(xx)
   validdateval!(x)
+  aggr = dvmr.args[:aggregator] 
+  aggr in keys(gAggDict) || error("aggregator function passed is not recognized: ",aggr)
   dvmr.model=dvmr.args
 end
 
 function transform!(dvmr::DateValgator,xx::T) where {T<:DataFrame}
   x = deepcopy(xx)
   validdateval!(x)
+  # make sure aggregator function exists
+  aggr = dvmr.args[:aggregator] 
+  aggr in keys(gAggDict) || error("aggregator function passed is not recognized: ",aggr)
+  # get the Statistics function
+  aggfn = gAggDict[aggr]
+  # pass the aggregator function to the generic aggregator function
+  fn = aggregatorclskipmissing(aggfn)
   grpby = typeof(dvmr.args[:dateinterval])
   sym = Symbol(grpby)
   x[sym] = round.(x[:Date],grpby)
-  aggr=by(x,sym,MeanValue = :Value=>skipmedian)
+  aggr=by(x,sym,MeanValue = :Value=>fn)
   rename!(aggr,Dict(names(aggr)[1]=>:Date,names(aggr)[2]=>:Value))
   lower = round(minimum(x[:Date]),grpby)
   upper = round(maximum(x[:Date]),grpby)
@@ -163,9 +182,10 @@ end
 function getMedian(t::Type{T},xx::DataFrame) where {T<:Union{TimePeriod,DatePeriod}}
   x = deepcopy(xx)
   sgp = Symbol(t)
-  fn = Dict(Dates.Hour=>Dates.hour,
+  fn = Dict(Dates.Second=>Dates.second,
             Dates.Minute=>Dates.minute,
-            Dates.Second=>Dates.second,
+            Dates.Hour=>Dates.hour,
+            Dates.Day=>Dates.day,
             Dates.Month=>Dates.month)
   try
     x[sgp]=fn[t].(x[:Date])
@@ -215,6 +235,7 @@ function transform!(dvzr::DateValizer,xx::T) where {T<:DataFrame}
   fn = Dict(Dates.Hour=>Dates.hour,
             Dates.Minute=>Dates.minute,
             Dates.Second=>Dates.second,
+            Dates.Day => Dates.day,
             Dates.Month=>Dates.month)
   try
     joined[sym]=fn[grpby].(joined[:Date])
@@ -242,7 +263,8 @@ mutable struct DateValNNer <: Transformer
         :missdirection => :symmetric, #:reverse, # or :forward or :symmetric
         :dateinterval => Dates.Hour(1),
         :nnsize => 1,
-        :strict => true
+        :strict => true,
+        :aggregator => :median
     )
     new(nothing,mergedict(default_args,args))
   end
@@ -251,17 +273,26 @@ end
 function fit!(dnnr::DateValNNer,xx::T,y::Vector=[]) where {T<:DataFrame}
   x = deepcopy(xx)
   validdateval!(x)
+  aggr = dnnr.args[:aggregator]
+  aggr in keys(gAggDict) || error("aggregator function passed is not recognized: ",aggr)
   dnnr.model=dnnr.args
 end
 
 function transform!(dnnr::DateValNNer,xx::T) where {T<:DataFrame}
   x = deepcopy(xx)
   validdateval!(x)
+  # make sure aggregator function exists
+  aggr = dnnr.args[:aggregator]
+  aggr in keys(gAggDict) || error("aggregator function pass is not recognized: ",aggr)
+  # get the Statistics function
+  aggfn = gAggDict[aggr]
+  # pass the aggregator function to the generic aggregator function
+  fn = aggregatorclskipmissing(aggfn)
   grpby = typeof(dnnr.args[:dateinterval])
   sym = Symbol(grpby)
   # aggregate by time period
   x[sym] = round.(x[:Date],grpby)
-  aggr = by(x,sym,MeanValue = :Value=>skipmedian)
+  aggr = by(x,sym,MeanValue = :Value=>fn)
   rename!(aggr,Dict(names(aggr)[1]=>:Date,names(aggr)[2]=>:Value))
   lower = round(minimum(x[:Date]),grpby)
   upper = round(maximum(x[:Date]),grpby)
@@ -335,7 +366,7 @@ end
 function transform!(csvrdr::CSVDateValReader,x::T=[]) where {T<:Union{DataFrame,Vector,Matrix}}
     fname = csvrdr.args[:filename]
     fmt = csvrdr.args[:dateformat]
-    df = CSV.read(fname)
+    df = CSV.read(fname) |> DataFrame
     ncol(df) == 2 || error("dataframe should have only two columns: Date,Value")
     rename!(df,names(df)[1]=>:Date,names(df)[2]=>:Value)
     df[:Date] = DateTime.(df[:Date],fmt)
@@ -364,7 +395,7 @@ end
 function transform!(csvwtr::CSVDateValWriter,x::T) where {T<:Union{DataFrame,Vector,Matrix}}
     fname = csvwtr.args[:filename]
     fmt = csvwtr.args[:dateformat]
-    df = deepcopy(x)
+    df = deepcopy(x) |> DataFrame
     ncol(df) == 2 || error("dataframe should have only two columns: Date,Value")
     rename!(df,names(df)[1]=>:Date,names(df)[2]=>:Value)
     eltype(df[:Date]) <: DateTime || error("Date format error")
